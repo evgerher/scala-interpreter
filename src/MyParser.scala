@@ -126,23 +126,51 @@ object MyParser {
 
         val sliceE3 = tokens.slice(i2, tokens.size)
         val (e3, i3) = parseExpression(sliceE3, i2)
+
         (EIf(e1, e2, e3), i3 + shift)
-      case fst: TFST =>
+      case TFST() =>
         val (expr, index) = parseExpression(tokens.slice(1, tokens.size), shift)
         (EFst(expr), index + 1)
-      case cons: TCONS =>
+      case TCONS() =>
         val sliceL = tokens.slice(1, tokens.size)
         val (left, li) = parseExpression(sliceL, 1)
 
         val sliceR = tokens.slice(li, tokens.size)
         val (right, ri) = parseExpression(sliceR, li)
+
         (ECons(left, right), ri + shift)
+      case tmath @ (TPLUS() | TMINUS() | TMULT() | TEQ() | TLT() | TGT()) =>
+        parseMath(tmath, tokens, shift)
       case tint @ (TINT(_) | TTRUE() | TFALSE() | TNIL() | TVNAME(_)) =>
         parseSingle(tint, shift)
       case _ =>
         throw new MyParserException("I am in panick")
     }
   }
+
+  private[this] def parseMath(tmath: Token, tokens: List[Token], shift: Int): (Expr, Int) = {
+    val sliceL = tokens.slice(1, tokens.size)
+    val (left, li) = parseExpression(sliceL, 1)
+
+    val sliceR = tokens.slice(li, tokens.size)
+    val (right, ri) = parseExpression(sliceR, 1)
+
+    (tmath match {
+      case TPLUS() =>
+        EPlus(left, right)
+      case TMINUS() =>
+        EMinus(left, right)
+      case TMULT() =>
+        EMult(left, right)
+      case TEQ() =>
+        EEq(left, right)
+      case TLT() =>
+        ELt(left, right)
+      case TGT() =>
+        EGt(left, right)
+    }, ri + shift + 1)
+  }
+
 
   private[this] def parseSingle(token: Token, shift: Int): (Expr, Int) = {
     (
@@ -230,12 +258,30 @@ object MyParser {
 //      }
     }
 
-    { // 4
+    { // 4.1
+      val code = "(+ x y)"
+      val tokens = ProjLexer(code)
+      val (e, i) = parseExpression(tokens)
+
+      require(i == 5)
+      require(e.isInstanceOf[EPlus])
+    }
+
+    { // 4.2
+      val code = "(app f 2 3)"
+      val tokens = ProjLexer(code)
+      val (e, i) = parseExpression(tokens)
+
+      require(i == 6)
+      require(e.isInstanceOf[EApp])
+    }
+
+    { // 4.3
       val code = "(let ((def f (x (by-name y)) (+ x y))) (app f 2 3))"
       val tokens = ProjLexer(code)
       val (e, i) = parseExpression(tokens)
 
-      require(i == 27)
+      require(i == 26)
 
     }
   }
