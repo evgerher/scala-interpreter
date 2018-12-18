@@ -324,11 +324,35 @@ object MyParser {
     }
 
     { // 4.4. GREAT
-      val code = "(let ((def f (x (by-name y)) (+ x y))) (app f 2 3))"
+//      val code = "(let ((def f (x (by-name y)) (+ x y))) (app f 2 3))"
+//      val tokens = ProjLexer(code)
+//      val (e, i) = parseExpression(tokens)
+//
+//      require(i == 26)
+    }
+
+    { // 5 - I even did not change anything :)
+//      val code = "(let ((def g () (+ 1 2))) (let ((val f g)) f))"
+//      val tokens = ProjLexer(code)
+//      val (e, i) = parseExpression(tokens)
+//
+//      require(i == 27)
+    }
+
+    { // 6
+//      val code = "(let ((val a 10) (val b (+ a 1))) (* b 3))"
+//      val tokens = ProjLexer(code)
+//      val (e, i) = parseExpression(tokens)
+//
+//      require(i == 24)
+    }
+
+    { // 7
+      val code = "(let ((def f (x) (if (= x 0) 0 (+ x (app f (- x 1)))))) (let ((val g f)) (app g 5)))"
       val tokens = ProjLexer(code)
       val (e, i) = parseExpression(tokens)
 
-      require(i == 26)
+      require(i == 49)
     }
   }
 }

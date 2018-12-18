@@ -54,31 +54,31 @@ object Test extends App {
 //      }
 //
       { // 4
-        val code = "(let ((def f (x (by-name y)) (+ x y))) (app f 2 3))"
+//        val code = "(let ((def f (x (by-name y)) (+ x y))) (app f 2 3))"
+//        val res = conv.toInt(run_myeval(code)) match {
+//          case Some(5) => true
+//          case _ => false
+//        }
+//        print_result(res)
+      }
+
+      { // 5
+        val code = "(let ((def g () (+ 1 2))) (let ((val f g)) f))"
+        val res = conv.isDef(run_myeval(code)) match {
+          case true => true
+          case false => false
+        }
+        print_result(res)
+      }
+//
+      { // 6
+        val code = "(let ((val a 10) (val b (+ a 1))) (* b 3))"
         val res = conv.toInt(run_myeval(code)) match {
-          case Some(5) => true
+          case Some(33) => true
           case _ => false
         }
         print_result(res)
       }
-
-//      { // 5
-//        val code = "(let ((def g () (+ 1 2))) (let ((val f g)) f))"
-//        val res = conv.isDef(run_myeval(code)) match {
-//          case true => true
-//          case false => false
-//        }
-//        print_result(res)
-//      }
-//
-//      { // 6
-//        val code = "(let ((val a 10) (val b (+ a 1))) (* b 3))"
-//        val res = conv.toInt(run_myeval(code)) match {
-//          case Some(33) => true
-//          case _ => false
-//        }
-//        print_result(res)
-//      }
 
 //      { // 7
 //        val code = "(let ((def f (x) (if (= x 0) 0 (+ x (app f (- x 1)))))) (let ((val g f)) (app g 5)))"
