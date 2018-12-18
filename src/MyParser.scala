@@ -32,20 +32,6 @@ object MyParser {
     throw new MyParserException("Corresponding RP not found")
   }
 
-  private[this] def parseBettas(parenthesized: List[Token]): List[Bind] = {
-    val buf = ListBuffer[Bind]()
-    var offset: Int = 0
-    val tokens = parenthesized.slice(1, parenthesized.length - 1)
-
-    while (offset < tokens.size) {
-      val (b, i) = parseBeta(tokens.slice(offset, tokens.size), offset)
-      buf += b
-      offset = i
-    }
-
-    buf.toList
-  }
-
   private[this] def readName(token: Token): String = {
     token match {
       case TVNAME(s: String) => s
@@ -61,19 +47,6 @@ object MyParser {
         val slice = tokens.slice(1, tokens.size)
         (parseArg(tokens.slice(1, getPRIndex(slice) + 1), offset + 1))
     }
-  }
-
-  private[this] def parseArgs(tokens: List[Token]): List[Arg] = {
-    val buf = ListBuffer[Arg]()
-    var offset: Int = 0
-
-    while (offset < tokens.size) {
-      val (a, i) = parseArg(tokens.slice(offset, tokens.size), offset)
-      buf += a
-      offset = i
-    }
-
-    buf.toList
   }
 
   private[this] def parseBeta(tokens: List[Token], shift: Int = 0): (Bind, Int) = {
@@ -97,6 +70,46 @@ object MyParser {
         val (e, i) = parseExpression(tokens.slice(endARP, tokens.size), endARP)
         (BDef(name, alphas, e), i + shift)
     }
+  }
+
+  private[this] def parseArgs(tokens: List[Token]): List[Arg] = {
+    val buf = ListBuffer[Arg]()
+    var offset: Int = 0
+
+    while (offset < tokens.size) {
+      val (a, i) = parseArg(tokens.slice(offset, tokens.size), offset)
+      buf += a
+      offset = i
+    }
+
+    buf.toList
+  }
+
+  private[this] def parseBettas(parenthesized: List[Token]): List[Bind] = {
+    val buf = ListBuffer[Bind]()
+    var offset: Int = 0
+    val tokens = parenthesized.slice(1, parenthesized.length - 1)
+
+    while (offset < tokens.size) {
+      val (b, i) = parseBeta(tokens.slice(offset, tokens.size), offset)
+      buf += b
+      offset = i
+    }
+
+    buf.toList
+  }
+
+  def parseExpressions(tokens: List[Token]): List[Expr] = {
+    val buf = ListBuffer[Expr]()
+    var offset: Int = 0
+
+    while (offset < tokens.size) {
+      val (e, i) = parseExpression(tokens.slice(offset, tokens.size), offset)
+      buf += e
+      offset = i
+    }
+
+    buf.toList
   }
 
   private[this] def parseExpression(tokens: List[Token], shift: Int = 0): (Expr, Int) = {
@@ -139,6 +152,15 @@ object MyParser {
         val (right, ri) = parseExpression(sliceR, li)
 
         (ECons(left, right), ri + shift)
+      case TAPP() =>
+        val (name, ni) = parseExpression(tokens.slice(1, tokens.size), 1)
+        val rp = getPRIndex(tokens)
+
+        val args: List[Expr] = if (ni < tokens.size)
+          parseExpressions(tokens.slice(ni, rp))
+        else
+          List[Expr]()
+        (EApp(name, args), rp + shift)
       case tmath @ (TPLUS() | TMINUS() | TMULT() | TEQ() | TLT() | TGT()) =>
         parseMath(tmath, tokens, shift)
       case tint @ (TINT(_) | TTRUE() | TFALSE() | TNIL() | TVNAME(_)) =>
@@ -259,29 +281,52 @@ object MyParser {
     }
 
     { // 4.1
-      val code = "(+ x y)"
-      val tokens = ProjLexer(code)
-      val (e, i) = parseExpression(tokens)
-
-      require(i == 5)
-      require(e.isInstanceOf[EPlus])
+//      val code = "(+ x y)"
+//      val tokens = ProjLexer(code)
+//      val (e, i) = parseExpression(tokens)
+//
+//      require(i == 5)
+//      require(e.isInstanceOf[EPlus])
     }
 
     { // 4.2
-      val code = "(app f 2 3)"
-      val tokens = ProjLexer(code)
-      val (e, i) = parseExpression(tokens)
-
-      require(i == 6)
-      require(e.isInstanceOf[EApp])
+//      val code = "(app f 2 3)"
+//      val tokens = ProjLexer(code)
+//      val (e, i) = parseExpression(tokens)
+//
+//      require(i == 6)
+//      require(e.isInstanceOf[EApp])
     }
 
     { // 4.3
-      val code = "(let ((def f (x (by-name y)) (+ x y))) (app f 2 3))"
+      val code = "(app f 2 3 (fst (cons a (+ x y))))"
       val tokens = ProjLexer(code)
       val (e, i) = parseExpression(tokens)
 
-      require(i == 26)
+      require(i == 18)
+      e match {
+        case EApp(EName(n), es: List[Expr]) =>
+          require(n == "f")
+          require(es.size == 3)
+          require(es(0).isInstanceOf[EInt] && es(1).isInstanceOf[EInt])
+          require(es(2).isInstanceOf[EFst])
+
+          val fst = es(2).asInstanceOf[EFst]
+          require(fst.el.isInstanceOf[ECons])
+
+          val pair = fst.el.asInstanceOf[ECons]
+          require(pair.eh.isInstanceOf[EName])
+          require(pair.et.isInstanceOf[EPlus])
+      }
+      require(e.isInstanceOf[EApp])
+    }
+
+    { // 4.4
+//      val code = "(let ((def f (x (by-name y)) (+ x y))) (app f 2 3))"
+//      val tokens = ProjLexer(code)
+//      val (e, i) = parseExpression(tokens)
+//
+//      require(i == 26)
 
     }
   }
