@@ -120,13 +120,31 @@ object MyParser {
       case lp: TLPAREN =>
         val slice = tokens.slice(1, tokens.size)
         (parseExpression(tokens.slice(1, getPRIndex(slice) + 2), shift + 2))
+
+      case TMATCH() =>
+        val sliceE1 = tokens.slice(1, tokens.size)
+        val (e1, i1) = parseExpression(sliceE1, 1)
+
+        val sliceE2 = tokens.slice(i1, tokens.size)
+        val (e2, i2) = parseExpression(sliceE2, i1)
+
+        val hdtlEnd = getPRIndex(tokens.slice(i2 + 1, tokens.size)) + i2 + 1
+        val sliceHDTL = tokens.slice(i2 + 1, hdtlEnd)
+        val (hd, tl) = parseHDTL(sliceHDTL)
+        val i3 = hdtlEnd + 2 // Exactly two items are consumer
+
+        val sliceE3 = tokens.slice(i3, tokens.size)
+        val (e3, i4) = parseExpression(sliceE3, i3)
+        (EMatch(e1, e2, hd, tl, e3), i4 + 1 + shift)
       case TLET() =>
         val TLET_SHIFT = 2
 
         val slice = tokens.slice(TLET_SHIFT, tokens.size)
         val endBRP = getPRIndex(slice) + TLET_SHIFT + 1
+
         val bslice = tokens.slice(TLET_SHIFT - 1, endBRP) // Include first LPAREN
         val bettas: List[Bind] = parseBettas(bslice)
+
         val (e, i) = parseExpression(tokens.slice(endBRP, tokens.size), endBRP + shift)
         (ELet(bettas, e), i)
       case TSND() =>
@@ -172,6 +190,15 @@ object MyParser {
     }
   }
 
+  private[this] def parseHDTL(tokens: List[Token]): (String, String) = {
+    val hd = parseSingle(tokens(0))._1
+    val tl = parseSingle(tokens(1))._1
+    (hd, tl) match {
+      case (EName(h), EName(t)) => (h, t)
+      case _ => throw new MyParserException("Expected two TVNames")
+    }
+  }
+
   private[this] def parseMath(tmath: Token, tokens: List[Token], shift: Int): (Expr, Int) = {
     val sliceL = tokens.slice(1, tokens.size)
     val (left, li) = parseExpression(sliceL, 1)
@@ -195,8 +222,7 @@ object MyParser {
     }, ri + shift + 1)
   }
 
-
-  private[this] def parseSingle(token: Token, shift: Int): (Expr, Int) = {
+  private[this] def parseSingle(token: Token, shift: Int = 0): (Expr, Int) = {
     (
       token match {
         case TINT(n: Int) =>
@@ -348,11 +374,19 @@ object MyParser {
     }
 
     { // 7
-      val code = "(let ((def f (x) (if (= x 0) 0 (+ x (app f (- x 1)))))) (let ((val g f)) (app g 5)))"
+//      val code = "(let ((def f (x) (if (= x 0) 0 (+ x (app f (- x 1)))))) (let ((val g f)) (app g 5)))"
+//      val tokens = ProjLexer(code)
+//      val (e, i) = parseExpression(tokens)
+//
+//      require(i == 49)
+    }
+
+    { // 8
+      val code = "(match-list (cons 1 2) (+ 4 5) (hdx tly) (+ hdx tly))"
       val tokens = ProjLexer(code)
       val (e, i) = parseExpression(tokens)
 
-      require(i == 49)
+      require(i == 22)
     }
   }
 }
