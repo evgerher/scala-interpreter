@@ -117,10 +117,23 @@ object MyParser {
   private[this] def parseExpression(tokens: List[Token], shift: Int = 0): (Expr, Int) = {
     val len = tokens.size
     tokens(0) match {
-      case lp: TLPAREN =>
+      case TLPAREN() =>
         val slice = tokens.slice(1, tokens.size)
         (parseExpression(tokens.slice(1, getPRIndex(slice) + 2), shift + 2))
+      case TRMK() =>
+        val pr = getPRIndex(tokens.slice(1, tokens.size))
+        val bettas = parseBettas(tokens.slice(1, pr + 1))
+        (ERmk(bettas), tokens.size + shift)
+      case TRFD() =>
+        val (e, i1) = parseExpression(tokens.slice(1, tokens.size), 0)
+        val (tvname, i2) = parseSingle(tokens(i1)) // i + 1 ???
+        val str: String = tvname match {
+          case EName(s) => s
+          case _ => throw new MyParserException("Expected EName")
+        }
 
+        require(i2 == 1)
+        (ERfd(e, str), i1 + i2 + shift)
       case TMATCH() =>
         val sliceE1 = tokens.slice(1, tokens.size)
         val (e1, i1) = parseExpression(sliceE1, 1)
@@ -382,11 +395,43 @@ object MyParser {
     }
 
     { // 8
-      val code = "(match-list (cons 1 2) (+ 4 5) (hdx tly) (+ hdx tly))"
+//      val code = "(match-list (cons 1 2) (+ 4 5) (hdx tly) (+ hdx tly))"
+//      val tokens = ProjLexer(code)
+//      val (e, i) = parseExpression(tokens)
+//
+//      require(i == 22)
+    }
+
+    { // 9
+//      val code = "(let ((def x () b) (lazy-val a (app x)) (val b 5)) a)"
+//      val tokens = ProjLexer(code)
+//      val (e, i) = parseExpression(tokens)
+//
+//      require(i == 26)
+    }
+
+    { // 10
+      val code = "(rfd (rmk (lazy-val abc (+ 3 4))) abc)"
       val tokens = ProjLexer(code)
       val (e, i) = parseExpression(tokens)
 
-      require(i == 22)
+      require(i == 16)
+    }
+
+    { // 11
+//      val code = "(let ((def x () (cons a b)) (val a 5) (val b 3)) (let ((val y x) (val a 4)) (app y)))"
+//      val tokens = ProjLexer(code)
+//      val (e, i) = parseExpression(tokens)
+//
+//      require(i == 22)
+    }
+
+    { // 12
+//      val code = "(let ((def x () (cons a b)) (val a 5) (val b 3)) (let ((val a 4) (val y x)) (app y)))"
+//      val tokens = ProjLexer(code)
+//      val (e, i) = parseExpression(tokens)
+//
+//      require(i == 22)
     }
   }
 }
