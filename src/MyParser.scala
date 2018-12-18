@@ -1,10 +1,8 @@
 package pp201802.proj.MyParser
-import pp201802.proj.Data.DataBundle
 import pp201802.proj.Data.DataBundle._
 import pp201802.proj.Lexer._
 
 import collection.mutable.{ListBuffer, Stack}
-import scala.collection.mutable
 
 class MyParserException(val msg: String) extends Exception
 
@@ -41,11 +39,11 @@ object MyParser {
 
   def parseArg(tokens: List[Token], offset: Int): (Arg, Int) = {
     tokens(0) match {
-      case TVNAME(s: String) => (AVname(s), offset + 1) // todo: TNNAME IS NEVER USED???
+      case TVNAME(s: String) => (AVname(s), offset + 1)
       case TNNAME(s: String) => (ANname(s), offset + 1)
       case TLPAREN() =>
         val slice = tokens.slice(1, tokens.size)
-        (parseArg(tokens.slice(1, getPRIndex(slice) + 1), offset + 1))
+        (parseArg(tokens.slice(1, getPRIndex(slice) + 1), offset + 2)) // todo: use 1 or 2?
     }
   }
 
@@ -63,10 +61,14 @@ object MyParser {
         val (e, i) = parseExpression(tokens.slice(2, tokens.size), shift + 2) // todo: should come 11
         (BVal(name, e), i)
       case TDEF() =>
+        val TDEF_SHIFT = 3
         val name = readName(tokens(1))
-        val slice = tokens.slice(2, tokens.size)
-        val endARP = getPRIndex(slice)
-        val alphas: List[Arg] = parseArgs(tokens.slice(2, endARP))
+        val slice = tokens.slice(TDEF_SHIFT, tokens.size) // Eat first LPAREN
+        val endARP = getPRIndex(slice) + TDEF_SHIFT + 1
+
+        val alphasSlice = tokens.slice(TDEF_SHIFT, endARP - 1)
+        val alphas: List[Arg] = parseArgs(alphasSlice)
+
         val (e, i) = parseExpression(tokens.slice(endARP, tokens.size), endARP)
         (BDef(name, alphas, e), i + shift)
     }
@@ -299,35 +301,34 @@ object MyParser {
     }
 
     { // 4.3
-      val code = "(app f 2 3 (fst (cons a (+ x y))))"
-      val tokens = ProjLexer(code)
-      val (e, i) = parseExpression(tokens)
-
-      require(i == 18)
-      e match {
-        case EApp(EName(n), es: List[Expr]) =>
-          require(n == "f")
-          require(es.size == 3)
-          require(es(0).isInstanceOf[EInt] && es(1).isInstanceOf[EInt])
-          require(es(2).isInstanceOf[EFst])
-
-          val fst = es(2).asInstanceOf[EFst]
-          require(fst.el.isInstanceOf[ECons])
-
-          val pair = fst.el.asInstanceOf[ECons]
-          require(pair.eh.isInstanceOf[EName])
-          require(pair.et.isInstanceOf[EPlus])
-      }
-      require(e.isInstanceOf[EApp])
-    }
-
-    { // 4.4
-//      val code = "(let ((def f (x (by-name y)) (+ x y))) (app f 2 3))"
+//      val code = "(app f 2 3 (fst (cons a (+ x y))))"
 //      val tokens = ProjLexer(code)
 //      val (e, i) = parseExpression(tokens)
 //
-//      require(i == 26)
+//      require(i == 18)
+//      e match {
+//        case EApp(EName(n), es: List[Expr]) =>
+//          require(n == "f")
+//          require(es.size == 3)
+//          require(es(0).isInstanceOf[EInt] && es(1).isInstanceOf[EInt])
+//          require(es(2).isInstanceOf[EFst])
+//
+//          val fst = es(2).asInstanceOf[EFst]
+//          require(fst.el.isInstanceOf[ECons])
+//
+//          val pair = fst.el.asInstanceOf[ECons]
+//          require(pair.eh.isInstanceOf[EName])
+//          require(pair.et.isInstanceOf[EPlus])
+//      }
+//      require(e.isInstanceOf[EApp])
+    }
 
+    { // 4.4. GREAT
+      val code = "(let ((def f (x (by-name y)) (+ x y))) (app f 2 3))"
+      val tokens = ProjLexer(code)
+      val (e, i) = parseExpression(tokens)
+
+      require(i == 26)
     }
   }
 }
