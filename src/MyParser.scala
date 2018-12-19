@@ -251,10 +251,16 @@ object MyParser {
       }, shift + 1)
   }
 
+  /**
+    * Get only Expression itselfs
+    * The second parameter is for testing: all tokens are covered or not
+    *
+    * @param tokens
+    * @return
+    */
   def apply(tokens: List[Token]): Expr = {
-    println(tokens)
-//    val subExpressions: List[(Int, Int)] = getSubExpressions(tokens)
-    val e = parseExpression(tokens)._1
+    val (e, i) = parseExpression(tokens)
+    require(i == tokens.size, "Something went wrong")
     e
   }
 

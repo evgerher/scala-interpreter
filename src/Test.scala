@@ -26,58 +26,58 @@ object Test extends App {
       println("=================")
       println("1. Basic Test")
 
-//      { // 1
-//        val code = "(fst (cons 1 2))"
-//        val res = conv.toInt(run_myeval(code)) match {
-//          case Some(1) => true
-//          case _ => false
-//        }
-//        print_result(res)
-//      }
-
-//      { // 2
-//        val code = "(let ((val p (cons 1 (cons true nil)))) (cons 0 p))"
-//        val res = conv.toPair(run_myeval(code)) match {
-//          case Some(_) => true // this only checks whether the result is a pair.
-//          case _ => false
-//        }
-//        print_result(res)
-//      }
-
-//      { // 3
-//        val code = "(if true 10 20)"
-//        val res = conv.toInt(run_myeval(code)) match {
-//          case Some(10) => true
-//          case _ => false
-//        }
-//        print_result(res)
-//      }
-//
-      { // 4
-//        val code = "(let ((def f (x (by-name y)) (+ x y))) (app f 2 3))"
-//        val res = conv.toInt(run_myeval(code)) match {
-//          case Some(5) => true
-//          case _ => false
-//        }
-//        print_result(res)
-      }
-
-      { // 5
-        val code = "(let ((def g () (+ 1 2))) (let ((val f g)) f))"
-        val res = conv.isDef(run_myeval(code)) match {
-          case true => true
-          case false => false
-        }
-        print_result(res)
-      }
-//
-      { // 6
-        val code = "(let ((val a 10) (val b (+ a 1))) (* b 3))"
+      { // 1
+        val code = "(fst (cons 1 2))"
         val res = conv.toInt(run_myeval(code)) match {
-          case Some(33) => true
+          case Some(1) => true
           case _ => false
         }
         print_result(res)
+      }
+
+      { // 2
+        val code = "(let ((val p (cons 1 (cons true nil)))) (cons 0 p))"
+        val res = conv.toPair(run_myeval(code)) match {
+          case Some(_) => true // this only checks whether the result is a pair.
+          case _ => false
+        }
+        print_result(res)
+      }
+
+      { // 3
+        val code = "(if true 10 20)"
+        val res = conv.toInt(run_myeval(code)) match {
+          case Some(10) => true
+          case _ => false
+        }
+        print_result(res)
+      }
+//
+      { // 4
+        val code = "(let ((def f (x (by-name y)) (+ x y))) (app f 2 3))"
+        val res = conv.toInt(run_myeval(code)) match {
+          case Some(5) => true
+          case _ => false
+        }
+        print_result(res)
+      }
+
+      { // 5
+//        val code = "(let ((def g () (+ 1 2))) (let ((val f g)) f))"
+//        val res = conv.isDef(run_myeval(code)) match {
+//          case true => true
+//          case false => false
+//        }
+//        print_result(res)
+      }
+//
+      { // 6
+//        val code = "(let ((val a 10) (val b (+ a 1))) (* b 3))"
+//        val res = conv.toInt(run_myeval(code)) match {
+//          case Some(33) => true
+//          case _ => false
+//        }
+//        print_result(res)
       }
 
 //      { // 7
