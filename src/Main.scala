@@ -24,7 +24,7 @@ object Value {
   case class VNil() extends VValue
 
   abstract class VBind extends Val
-  case class VDef(name: String, params:List[VArg], e:Val) extends VBind
+  case class VDef(name: String, params:List[VArg], body:VDefBody) extends VBind
   case class VVal(x:String, e:Val) extends VBind
 
   abstract class VArg extends Val
@@ -149,7 +149,7 @@ object Main {
     }
   }
 
-  private[this] def convertSingle(eh: Expr): Val = {
+  private[this] def convertSingle(eh: Expr)(implicit vargs: Map[String, Val]) : Val = {
     eh match {
       case EInt(n) =>
         VInt(n)
@@ -158,13 +158,16 @@ object Main {
       case EFalse() =>
         VBool(false)
       case EName(s) =>
-        VName(s)
+        vargs.get(s) match {
+          case Some(v) => v
+          case _ => VName(s)
+        }
       case ENil() =>
         VNil()
     }
   }
 
-  private[this] def convertMath(math: Expr): VValue = {
+  private[this] def convertMath(math: Expr)(implicit vargs: Map[String, Val]): VValue = {
     logger.debug(s"convertMath :: convert $math")
     try {
       // Yes, looks terrible, but all of them do not have one ancestor with two params...
@@ -201,7 +204,7 @@ object Main {
     }
   }
 
-  private[this] def executeMath[T <:Expr](v1: Val, v2: Val, EType: T): VValue = {
+  private[this] def executeMath[T >:Expr](v1: Val, v2: Val, EType: T): VValue = {
     val (i1, i2): (Int, Int) = (v1, v2) match {
       case (VInt(a), VInt(b)) =>
         (a, b)
@@ -230,9 +233,29 @@ object Main {
 
   private[this] def createPair(a: Val, b: Val): Val = VPair(a, b)
 
-  def myeval(e:Expr) : Val = {
+  private[this] def functionCall(f: VDef, vargs: List[Val]): Val = {
+    // TODO: how to express `by-name` values? :: NOT IMPLEMENTED
 
-    logger.info(s"Evaluating $e")
+    // should I allow it to extend?
+    // Or others will just create a new one?
+    val mappedArgs = mutable.Map[String, Val]()
+
+    f.params.zipWithIndex // todo: incorrect mapping
+      .map{case (vval, index) =>
+        vval match {
+          case VVname(s: String) => s -> vargs(index)
+          case VNname(s: String) => s -> vargs(index) // todo: hz what to do
+  //        case _ => index -> vval
+        }
+      }.foreach(mappedArgs += _) // just fucking collect into LIST!
+
+    myeval(f.body.e)(mappedArgs.toMap)
+  }
+
+  def myeval(e: Expr)(implicit vargs: Map[String, Val] = Map()) : Val = {
+
+//    logger.info(s"\n*** Evaluating $e ***\n")
+
     e match {
       case EFst(el) => // parse pair
         logger.info(s"MYEVAL :: Get first - $e")
@@ -248,8 +271,7 @@ object Main {
           bind => {
             val s: String = bind match {
               case VDef(name, args, body) => name
-              case VVname(name) => name
-              case VNname(name) => name
+              case VVal(n, e) => n
             }
 
             (s -> bind)
@@ -286,7 +308,7 @@ object Main {
         val f = context.get(name)
         // Expected that it is not possible to name a variable the same way as a function
         f match {
-          case vdef: VDef =>
+          case Some(vdef: VDef) =>
             logger.debug("function definition found -- OK")
           case _ =>
             logger.error("Value retrieved by name is not a function")
@@ -294,7 +316,7 @@ object Main {
         }
 
         val vargs: List[Val] = eargs.map(myeval)
-        VInt(5)
+        functionCall(f.head.asInstanceOf[VDef], vargs)
     }
   }
 }
