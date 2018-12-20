@@ -175,34 +175,43 @@ object Main {
       // Yes, looks terrible, but all of them do not have one ancestor with two params...
       math match {
         case EPlus(e1, e2)  =>
-          val v1 = myeval(e1)
-          val v2 = myeval(e2)
+          val v1 = readParam(e1)
+          val v2 = readParam(e2)
           executeMath(v1, v2, math)
         case EMinus(e1, e2) =>
-          val v1 = myeval(e1)
-          val v2 = myeval(e2)
+          val v1 = readParam(e1)
+          val v2 = readParam(e2)
           executeMath(v1, v2, math)
         case EMult(e1, e2) =>
-          val v1 = myeval(e1)
-          val v2 = myeval(e2)
+          val v1 = readParam(e1)
+          val v2 = readParam(e2)
           executeMath(v1, v2, math)
         case EEq(e1, e2) =>
-          val v1 = myeval(e1)
-          val v2 = myeval(e2)
+          val v1 = readParam(e1)
+          val v2 = readParam(e2)
           executeMath(v1, v2, math)
         case EGt(e1, e2) =>
-          val v1 = myeval(e1)
-          val v2 = myeval(e2)
+          val v1 = readParam(e1)
+          val v2 = readParam(e2)
           executeMath(v1, v2, math)
         case ELt(e1, e2) =>
-          val v1 = myeval(e1)
-          val v2 = myeval(e2)
+          val v1 = readParam(e1)
+          val v2 = readParam(e2)
           executeMath(v1, v2, math)
       }
     } catch {
       case e: RuntimeException =>
         logger.error("Unable to execute math operations, not all elements are ints")
         throw new EvalException("Expected expressions evaluable to ints")
+    }
+  }
+
+  private[this] def readParam(expr: Expr)(implicit vargs: Map[String, Val]): VInt = {
+    val v: Val = myeval(expr)
+    v match {
+      case VInt(n) => v.asInstanceOf[VInt]
+      case VVal(a: String, vint: VInt) => vint
+      case _ => ???
     }
   }
 
@@ -268,19 +277,16 @@ object Main {
         }
       case ELet(bs, eb) =>
         logger.info(s"MYEVAL :: ELet -> code block $e")
-        val binds: List[VBind] = bs.map(convertBind)
-        binds.map{
-          bind => {
-            val s: String = bind match {
-              case VDef(name, args, body) => name
-              case VVal(n, e) => n
-            }
-
-            (s -> bind)
+        bs.foreach(b => {
+          val converted = convertBind(b)(context.toMap)
+          val s: String = converted match {
+            case VDef(name, args, body) => name
+            case VVal(n, e) => n
           }
-        }.foreach(context += _)
+          context += (s -> converted)
+        })
 
-        myeval(eb)(context.toMap) // todo: if VNAME, then convert it somehow
+        myeval(eb)(context.toMap)
       case ECons(eh, et) =>
         createPair(myeval(eh), myeval(et))
       case single @ (EInt(_) | EName(_) | ETrue() | EFalse() | ENil()) =>
