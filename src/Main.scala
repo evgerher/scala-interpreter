@@ -9,7 +9,7 @@ object Value {
 
   // Environment
   implicit val level: LogLevel.Value = LogLevel.DEBUG // set NONE if do not wish to see messages
-  val context: mutable.Map[String, VBind] = mutable.Map[String, VBind]()
+  val context: mutable.Map[String, Val] = mutable.Map[String, Val]()
 
 
   sealed abstract class Val
@@ -24,6 +24,8 @@ object Value {
   case class VNil() extends VValue
 
   abstract class VBind extends Val
+  case class VExecuteLater(e: Expr) extends Val
+
   case class VDef(name: String, params:List[VArg], body:VDefBody) extends VBind
   case class VVal(x:String, bind:Val) extends VBind
 
@@ -147,6 +149,9 @@ object Main {
       case BVal(x, e) =>
         logger.debug(s"convertBind :: BVal -> VVal $bind")
         VVal(x, myeval(e))
+      case BLval(x, e) =>
+        logger.debug(s"convertBind :: BLval -> VVal $bind")
+        VVal(x, VExecuteLater(e))
       case _ => ???
     }
   }
@@ -161,7 +166,13 @@ object Main {
         VBool(false)
       case EName(s) =>
         vargs.get(s) match {
-          case Some(v) => v
+          case Some(v) => v match {
+            case VVal(s: String, later: VExecuteLater) =>
+              myeval(later.e)
+            case VVal(s: String, other: Val) =>
+              other
+            case _ => v
+          }
           case _ => VName(s)
         }
       case ENil() =>
@@ -211,6 +222,7 @@ object Main {
     v match {
       case VInt(n) => v.asInstanceOf[VInt]
       case VVal(a: String, vint: VInt) => vint
+      case VVal(a: String, later: VExecuteLater) => readParam(later.e)
       case _ => ???
     }
   }
@@ -244,18 +256,18 @@ object Main {
 
   private[this] def createPair(a: Val, b: Val): Val = VPair(a, b)
 
-  private[this] def functionCall(f: VDef, vargs: List[Val]): Val = {
+  private[this] def functionCall(f: VDef, args: List[Val])(implicit vargs: Map[String, Val]): Val = {
     // TODO: how to express `by-name` values? :: NOT IMPLEMENTED
 
-    // should I allow it to extend?
-    // Or others will just create a new one?
+    // Override old variables if needed
     val mappedArgs = mutable.Map[String, Val]()
+    mappedArgs ++= vargs
 
     f.params.zipWithIndex // todo: incorrect mapping
       .map{case (vval, index) =>
         vval match {
-          case VVname(s: String) => s -> vargs(index)
-          case VNname(s: String) => s -> vargs(index) // todo: hz what to do
+          case VVname(s: String) => s -> args(index)
+          case VNname(s: String) => s -> args(index) // todo: hz what to do
   //        case _ => index -> vval
         }
       }.foreach(mappedArgs += _) // just fucking collect into LIST!
@@ -263,11 +275,32 @@ object Main {
     myeval(f.body.e)(mappedArgs.toMap)
   }
 
+  private[this] def parseMatch(em: EMatch)(implicit vargs: Map[String, Val]): Val = {
+    val v1 = myeval(em.e1)
+    v1 match {
+      case VPair(a, b) => // Evaluate E3 with bindings if Pair
+        // Add new context items
+        val modifiedContext = mutable.Map[String, Val]()
+        modifiedContext ++= vargs
+        modifiedContext += (em.hd -> VVal(em.hd, a))
+        modifiedContext += (em.tl -> VVal(em.tl, b))
+
+        // Evaluate E3
+        myeval(em.e3)(modifiedContext.toMap)
+      case VNil() => // Evaluate E2 if Nil
+        myeval(em.e2)
+      case _ =>
+        v1
+    }
+  }
+
   def myeval(e: Expr)(implicit vargs: Map[String, Val] = Map()) : Val = {
 
 //    logger.info(s"\n*** Evaluating $e ***\n")
 
     e match {
+      case m: EMatch =>
+        parseMatch(m)
       case EFst(el) => // parse pair
         logger.info(s"MYEVAL :: Get first - $e")
         el match {
@@ -281,7 +314,7 @@ object Main {
           val converted = convertBind(b)(context.toMap)
           val s: String = converted match {
             case VDef(name, args, body) => name
-            case VVal(n, e) => n
+            case VVal(s, e) => s
           }
           context += (s -> converted)
         })
@@ -302,7 +335,7 @@ object Main {
             logger.error("Unable to determine boolean from expression")
             throw new EvalException("Expected VBool")
         }
-      case math @ (EPlus(_, _) | EMinus(_, _) | EMult(_, _) | EGt(_, _) | ELt(_, _)) =>
+      case math @ (EPlus(_, _) | EMinus(_, _) | EMult(_, _) | EGt(_, _) | ELt(_, _) | EEq(_, _)) =>
         convertMath(math)
       case EApp(ef, eargs) =>
         val name = ef match {
@@ -315,16 +348,20 @@ object Main {
 
         val f = context.get(name)
         // Expected that it is not possible to name a variable the same way as a function
-        f match {
+        val vdef = f match {
           case Some(vdef: VDef) =>
             logger.debug("function definition found -- OK")
+            vdef
+          case Some(VVal(s: String, vdef: VDef)) =>
+            logger.debug("function definition found -- OK")
+            vdef
           case _ =>
             logger.error("Value retrieved by name is not a function")
             throw new EvalException("Function definition expected by that name")
         }
 
-        val vargs: List[Val] = eargs.map(myeval)
-        functionCall(f.head.asInstanceOf[VDef], vargs)
+        val args: List[Val] = eargs.map(myeval)
+        functionCall(vdef, args)
     }
   }
 }

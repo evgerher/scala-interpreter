@@ -71,14 +71,14 @@ object Test extends App {
 //        print_result(res)
 //      }
 //
-      { // 6
-        val code = "(let ((val a 10) (val b (+ a 1))) (* b 3))"
-        val res = conv.toInt(run_myeval(code)) match {
-          case Some(33) => true
-          case _ => false
-        }
-        print_result(res)
-      }
+//      { // 6
+//        val code = "(let ((val a 10) (val b (+ a 1))) (* b 3))"
+//        val res = conv.toInt(run_myeval(code)) match {
+//          case Some(33) => true
+//          case _ => false
+//        }
+//        print_result(res)
+//      }
 
 //      { // 7
 //        val code = "(let ((def f (x) (if (= x 0) 0 (+ x (app f (- x 1)))))) (let ((val g f)) (app g 5)))"
@@ -88,7 +88,7 @@ object Test extends App {
 //        }
 //        print_result(res)
 //      }
-//
+
 //      { // 8
 //        val code = "(match-list (cons 1 2) (+ 4 5) (hdx tly) (+ hdx tly))"
 //        val res = conv.toInt(run_myeval(code)) match {
@@ -97,7 +97,7 @@ object Test extends App {
 //        }
 //        print_result(res)
 //      }
-//
+
 //      { // 9
 //        val code = "(let ((def x () b) (lazy-val a (app x)) (val b 5)) a)"
 //        val res = conv.toInt(run_myeval(code)) match {
@@ -106,16 +106,16 @@ object Test extends App {
 //        }
 //        print_result(res)
 //      }
-//
-//      { // 10
-//        val code = "(rfd (rmk (lazy-val abc (+ 3 4))) abc)"
-//        val res = conv.toInt(run_myeval(code)) match {
-//          case Some(7) => true
-//          case _ => false
-//        }
-//        print_result(res)
-//      }
-//
+
+      { // 10
+        val code = "(rfd (rmk (lazy-val abc (+ 3 4))) abc)"
+        val res = conv.toInt(run_myeval(code)) match {
+          case Some(7) => true
+          case _ => false
+        }
+        print_result(res)
+      }
+
 //      // 11, 12 => hint for scope of "x"
 //      { // 11
 //        val code = "(let ((def x () (cons a b)) (val a 5) (val b 3)) (let ((val y x) (val a 4)) (app y)))" // (5, 3)
