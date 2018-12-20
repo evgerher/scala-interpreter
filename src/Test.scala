@@ -63,12 +63,12 @@ object Test extends App {
       }
 
       { // 5
-//        val code = "(let ((def g () (+ 1 2))) (let ((val f g)) f))"
-//        val res = conv.isDef(run_myeval(code)) match {
-//          case true => true
-//          case false => false
-//        }
-//        print_result(res)
+        val code = "(let ((def g () (+ 1 2))) (let ((val f g)) f))"
+        val res = conv.isDef(run_myeval(code)) match {
+          case true => true
+          case false => false
+        }
+        print_result(res)
       }
 //
       { // 6

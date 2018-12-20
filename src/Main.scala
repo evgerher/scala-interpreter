@@ -25,7 +25,7 @@ object Value {
 
   abstract class VBind extends Val
   case class VDef(name: String, params:List[VArg], body:VDefBody) extends VBind
-  case class VVal(x:String, e:Val) extends VBind
+  case class VVal(x:String, bind:Val) extends VBind
 
   abstract class VArg extends Val
   case class VVname(s: String) extends VArg
@@ -88,8 +88,10 @@ object Value {
            bind match {
              case VDef(name, args, e) =>
                true
-             case _ => ???
+             case VVal(name: String, bind: VBind) =>
+               return isDef(bind)
            }
+
          case _ => ???
        }
      }
@@ -137,7 +139,7 @@ object Main {
     }
   }
 
-  private[this] def convertBind(bind: Bind): VBind = {
+  private[this] def convertBind(bind: Bind)(implicit vargs: Map[String, Val]): VBind = {
     bind match {
       case BDef(fname, params, e) =>
         logger.debug(s"convertBind :: BDef -> VBind $bind")
@@ -278,7 +280,7 @@ object Main {
           }
         }.foreach(context += _)
 
-        myeval(eb)
+        myeval(eb)(context.toMap) // todo: if VNAME, then convert it somehow
       case ECons(eh, et) =>
         createPair(myeval(eh), myeval(et))
       case single @ (EInt(_) | EName(_) | ETrue() | EFalse() | ENil()) =>
