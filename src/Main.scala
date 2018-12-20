@@ -175,27 +175,27 @@ object Main {
         case EPlus(e1, e2)  =>
           val v1 = myeval(e1)
           val v2 = myeval(e2)
-          executeMath(v1, v2, EPlus)
+          executeMath(v1, v2, math)
         case EMinus(e1, e2) =>
           val v1 = myeval(e1)
           val v2 = myeval(e2)
-          executeMath(v1, v2, EMinus)
+          executeMath(v1, v2, math)
         case EMult(e1, e2) =>
           val v1 = myeval(e1)
           val v2 = myeval(e2)
-          executeMath(v1, v2, EMult)
+          executeMath(v1, v2, math)
         case EEq(e1, e2) =>
           val v1 = myeval(e1)
           val v2 = myeval(e2)
-          executeMath(v1, v2, EEq)
+          executeMath(v1, v2, math)
         case EGt(e1, e2) =>
           val v1 = myeval(e1)
           val v2 = myeval(e2)
-          executeMath(v1, v2, EGt)
+          executeMath(v1, v2, math)
         case ELt(e1, e2) =>
           val v1 = myeval(e1)
           val v2 = myeval(e2)
-          executeMath(v1, v2, ELt)
+          executeMath(v1, v2, math)
       }
     } catch {
       case e: RuntimeException =>
@@ -204,7 +204,7 @@ object Main {
     }
   }
 
-  private[this] def executeMath[T >:Expr](v1: Val, v2: Val, EType: T): VValue = {
+  private[this] def executeMath(v1: Val, v2: Val, EType: Expr): VValue = {
     val (i1, i2): (Int, Int) = (v1, v2) match {
       case (VInt(a), VInt(b)) =>
         (a, b)
@@ -278,7 +278,7 @@ object Main {
           }
         }.foreach(context += _)
 
-        createPair(VList(binds), myeval(eb))
+        myeval(eb)
       case ECons(eh, et) =>
         createPair(myeval(eh), myeval(et))
       case single @ (EInt(_) | EName(_) | ETrue() | EFalse() | ENil()) =>
