@@ -43,7 +43,7 @@ object MyParser {
       case TNNAME(s: String) => (ANname(s), offset + 1)
       case TLPAREN() =>
         val slice = tokens.slice(1, tokens.size)
-        (parseArg(tokens.slice(1, getPRIndex(slice) + 1), offset + 2)) // todo: use 1 or 2?
+        (parseArg(tokens.slice(1, getPRIndex(slice) + 1), offset + 2))
     }
   }
 
@@ -58,7 +58,7 @@ object MyParser {
         (BLval(name, e), i + shift)
       case TVAL() =>
         val name = readName(tokens(1))
-        val (e, i) = parseExpression(tokens.slice(2, tokens.size), shift + 2) // todo: should come 11
+        val (e, i) = parseExpression(tokens.slice(2, tokens.size), shift + 2)
         (BVal(name, e), i)
       case TDEF() =>
         val TDEF_SHIFT = 3

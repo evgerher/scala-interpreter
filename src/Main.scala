@@ -1,16 +1,15 @@
 package pp201802.proj
 import scala.annotation.tailrec
 import pp201802.proj.Data.DataBundle._
+import pp201802.proj.Main.EvalException
 
 import scala.collection.immutable._
 import scala.collection.mutable
 
 object Value {
-
   // Environment
   implicit val level: LogLevel.Value = LogLevel.DEBUG // set NONE if do not wish to see messages
   val context: mutable.Map[String, Val] = mutable.Map[String, Val]()
-
 
   sealed abstract class Val
 
@@ -83,7 +82,7 @@ object Value {
        a match {
          case VNil() =>
            true
-         case _ => ???
+         case _ => throw new EvalException("Unexpected object for method isNil")
        }
      }
 
@@ -117,7 +116,7 @@ object logger {
   }
 
   def debug(s: Any)(implicit level: LogLevel.Value): Unit = {
-    apply(s"[DEBUG] $s", level >= LogLevel.DEBUG) // todo: how does it work?
+    apply(s"[DEBUG] $s", level >= LogLevel.DEBUG)
   }
 
   def error(s: Any)(implicit level: LogLevel.Value): Unit = {
@@ -168,9 +167,11 @@ object Main {
       case EFalse() =>
         VBool(false)
       case EName(s) =>
+        logger.debug(s"convertSingle :: found name param : $s")
         vargs.get(s) match {
           case Some(v) => v match {
             case VVal(s: String, later: VExecuteLater) =>
+              logger.debug(s"convertSingle :: requested param is lazy, evaluation of $s")
               myeval(later.e)
             case VVal(s: String, other: Val) =>
               other
@@ -226,7 +227,7 @@ object Main {
       case VInt(n) => v.asInstanceOf[VInt]
       case VVal(a: String, vint: VInt) => vint
       case VVal(a: String, later: VExecuteLater) => readParam(later.e) // todo: is it even used?
-      case _ => ???
+      case _ => throw new EvalException("readParam : Unexpected object type")
     }
   }
 
@@ -238,8 +239,6 @@ object Main {
     }
 
     logger.debug(s"executeMath :: values are $i1, $i2")
-
-    // todo: should I worry about TRUE == TRUE ?
 
     EType match {
       case minus: EMinus =>
@@ -260,20 +259,19 @@ object Main {
   private[this] def createPair(a: Val, b: Val): Val = VPair(a, b)
 
   private[this] def functionCall(f: VDef, args: List[Val])(implicit vargs: Map[String, Val]): Val = {
-    // TODO: how to express `by-name` values? :: NOT IMPLEMENTED
 
     // Override old variables if needed
     val mappedArgs = mutable.Map[String, Val]()
     mappedArgs ++= vargs
 
-    f.params.zipWithIndex // todo: incorrect mapping
+    f.params.zipWithIndex
       .map{case (vval, index) =>
         vval match {
           case VVname(s: String) => s -> args(index)
           case VNname(s: String) => s -> args(index) // todo: hz what to do
   //        case _ => index -> vval
         }
-      }.foreach(mappedArgs += _) // just fucking collect into LIST!
+      }.foreach(mappedArgs += _)
 
     myeval(f.body.e)(mappedArgs.toMap)
   }
