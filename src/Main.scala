@@ -128,7 +128,7 @@ object Main {
 
   class EvalException(val msg: String) extends Exception
 
-  def convertArg(arg: Arg): VArg = {
+  private[this] def convertArg(arg: Arg): VArg = {
     logger.debug(s"Convert arg $arg")
     arg match {
       case AVname(s) => VVname(s)
@@ -137,7 +137,7 @@ object Main {
     }
   }
 
-  def convertBind(bind: Bind): VBind = {
+  private[this] def convertBind(bind: Bind): VBind = {
     bind match {
       case BDef(fname, params, e) =>
         logger.debug(s"convertBind :: BDef -> VBind $bind")
@@ -149,7 +149,7 @@ object Main {
     }
   }
 
-  def convertSingle(eh: Expr): Val = {
+  private[this] def convertSingle(eh: Expr): Val = {
     eh match {
       case EInt(n) =>
         VInt(n)
@@ -164,14 +164,71 @@ object Main {
     }
   }
 
-  def convertMath(math: Expr): VValue = {
-    math match {
-      case EPlus(e1, e2) =>
-
+  private[this] def convertMath(math: Expr): VValue = {
+    logger.debug(s"convertMath :: convert $math")
+    try {
+      // Yes, looks terrible, but all of them do not have one ancestor with two params...
+      math match {
+        case EPlus(e1, e2)  =>
+          val v1 = myeval(e1)
+          val v2 = myeval(e2)
+          executeMath(v1, v2, EPlus)
+        case EMinus(e1, e2) =>
+          val v1 = myeval(e1)
+          val v2 = myeval(e2)
+          executeMath(v1, v2, EMinus)
+        case EMult(e1, e2) =>
+          val v1 = myeval(e1)
+          val v2 = myeval(e2)
+          executeMath(v1, v2, EMult)
+        case EEq(e1, e2) =>
+          val v1 = myeval(e1)
+          val v2 = myeval(e2)
+          executeMath(v1, v2, EEq)
+        case EGt(e1, e2) =>
+          val v1 = myeval(e1)
+          val v2 = myeval(e2)
+          executeMath(v1, v2, EGt)
+        case ELt(e1, e2) =>
+          val v1 = myeval(e1)
+          val v2 = myeval(e2)
+          executeMath(v1, v2, ELt)
+      }
+    } catch {
+      case e: RuntimeException =>
+        logger.error("Unable to execute math operations, not all elements are ints")
+        throw new EvalException("Expected expressions evaluable to ints")
     }
   }
 
-  def createPair(a: Val, b: Val): Val = VPair(a, b)
+  private[this] def executeMath[T <:Expr](v1: Val, v2: Val, EType: T): VValue = {
+    val (i1, i2): (Int, Int) = (v1, v2) match {
+      case (VInt(a), VInt(b)) =>
+        (a, b)
+      case _ => throw new RuntimeException("Not all elements are ints")
+    }
+
+    logger.debug(s"executeMath :: values are $i1, $i2")
+
+    // todo: should I worry about TRUE == TRUE ?
+
+    EType match {
+      case minus: EMinus =>
+        VInt(i1 - i2)
+      case plus: EPlus =>
+        VInt(i1 + i2)
+      case mult: EMult =>
+        VInt(i1 * i2)
+      case eq: EEq =>
+        VBool(i1 == i2)
+      case gt: EGt =>
+        VBool(i1 > i2)
+      case lt: ELt =>
+        VBool(i1 < i2)
+    }
+  }
+
+  private[this] def createPair(a: Val, b: Val): Val = VPair(a, b)
 
   def myeval(e:Expr) : Val = {
 
@@ -236,7 +293,7 @@ object Main {
             throw new EvalException("Function definition expected by that name")
         }
 
-
+        val vargs: List[Val] = eargs.map(myeval)
         VInt(5)
     }
   }
