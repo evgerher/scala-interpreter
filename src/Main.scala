@@ -1,14 +1,18 @@
 package pp201802.proj
 import scala.annotation.tailrec
 import pp201802.proj.Data.DataBundle._
+
 import scala.collection.immutable._
+import scala.collection.mutable
 
 object Value {
 
   // Environment
+  implicit val level: LogLevel.Value = LogLevel.DEBUG // set NONE if do not wish to see messages
+  val context: mutable.Map[String, VBind] = mutable.Map[String, VBind]()
+
 
   sealed abstract class Val
-  implicit val level: LogLevel.Value = LogLevel.DEBUG // set NONE if do not wish to see messages
 
   case class VList(l: List[Val]) extends Val
   case class VPair(a: Val, b: Val) extends Val
@@ -25,9 +29,9 @@ object Value {
 
   abstract class VArg extends Val
   case class VVname(s: String) extends VArg
-
   case class VNname(s: String) extends VArg
 
+  case class VDefBody(e: Expr) extends Val
 
   abstract class ConvertToScala[A] {
     def toInt(a:A) : Option[Int]
@@ -102,15 +106,15 @@ object LogLevel extends Enumeration {
 // I would define one myself
 object logger {
   def info(s: Any)(implicit level: LogLevel.Value): Unit = {
-    apply(s"[$level] $s", level >= LogLevel.INFO)
+    apply(s"[INFO] $s", level >= LogLevel.INFO)
   }
 
   def debug(s: Any)(implicit level: LogLevel.Value): Unit = {
-    apply(s"[$level] $s", level >= LogLevel.DEBUG) // todo: how does it work?
+    apply(s"[DEBUG] $s", level >= LogLevel.DEBUG) // todo: how does it work?
   }
 
   def error(s: Any)(implicit level: LogLevel.Value): Unit = {
-    apply(s"[$level] $s", level >= LogLevel.ERROR)
+    apply(s"[ERROR] $s", level >= LogLevel.ERROR)
   }
 
   def apply(s: Any, boolean: Boolean): Unit = {
@@ -135,11 +139,11 @@ object Main {
 
   def convertBind(bind: Bind): VBind = {
     bind match {
-      case BDef(f, params, e) =>
-        logger.debug(s"BDef -> VBind $bind")
-        VDef(f, params.map(convertArg), myeval(e))
+      case BDef(fname, params, e) =>
+        logger.debug(s"convertBind :: BDef -> VBind $bind")
+        VDef(fname, params.map(convertArg), VDefBody(e))
       case BVal(x, e) =>
-        logger.debug(s"BVal -> VVal $bind")
+        logger.debug(s"convertBind :: BVal -> VVal $bind")
         VVal(x, myeval(e))
       case _ => ???
     }
@@ -160,22 +164,42 @@ object Main {
     }
   }
 
+  def convertMath(math: Expr): VValue = {
+    math match {
+      case EPlus(e1, e2) =>
+
+    }
+  }
+
   def createPair(a: Val, b: Val): Val = VPair(a, b)
 
   def myeval(e:Expr) : Val = {
-//    val context...
+
     logger.info(s"Evaluating $e")
     e match {
       case EFst(el) => // parse pair
         logger.info(s"MYEVAL :: Get first - $e")
         el match {
           case ECons(eh, et) => // get first
-            myeval(eh) // todo: what if not that simple? internal subitems
+            myeval(eh)
           case _ => throw new EvalException("ECons was expected...")
         }
       case ELet(bs, eb) =>
-        logger.info(s"MYEVAL :: EDef -> VDef $e")
-        createPair(VList(bs.map(convertBind)), myeval(eb))
+        logger.info(s"MYEVAL :: ELet -> code block $e")
+        val binds: List[VBind] = bs.map(convertBind)
+        binds.map{
+          bind => {
+            val s: String = bind match {
+              case VDef(name, args, body) => name
+              case VVname(name) => name
+              case VNname(name) => name
+            }
+
+            (s -> bind)
+          }
+        }.foreach(context += _)
+
+        createPair(VList(binds), myeval(eb))
       case ECons(eh, et) =>
         createPair(myeval(eh), myeval(et))
       case single @ (EInt(_) | EName(_) | ETrue() | EFalse() | ENil()) =>
@@ -187,11 +211,33 @@ object Main {
         bool match {
           case VBool(b) =>
             if (b) myeval(et) else myeval(ef)
-          case _ => {
-            logger.error("Expected VBool...")
+          case _ =>
+            logger.error("Unable to determine boolean from expression")
             throw new EvalException("Expected VBool")
-          }
         }
+      case math @ (EPlus(_, _) | EMinus(_, _) | EMult(_, _) | EGt(_, _) | ELt(_, _)) =>
+        convertMath(math)
+      case EApp(ef, eargs) =>
+        val name = ef match {
+          case EName(s) =>
+            s
+          case _ =>
+            logger.error("Unable to retrieve a function name")
+            throw new EvalException("Function name expected")
+        }
+
+        val f = context.get(name)
+        // Expected that it is not possible to name a variable the same way as a function
+        f match {
+          case vdef: VDef =>
+            logger.debug("function definition found -- OK")
+          case _ =>
+            logger.error("Value retrieved by name is not a function")
+            throw new EvalException("Function definition expected by that name")
+        }
+
+
+        VInt(5)
     }
   }
 }
