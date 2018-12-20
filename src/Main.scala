@@ -17,6 +17,9 @@ object Value {
   case class VList(l: List[Val]) extends Val
   case class VPair(a: Val, b: Val) extends Val
 
+  case class VStruct(binds: List[VBind]) extends Val
+
+
   abstract class VValue extends Val
   case class VInt(i: Int) extends VValue
   case class VBool(b: Boolean) extends VValue
@@ -222,7 +225,7 @@ object Main {
     v match {
       case VInt(n) => v.asInstanceOf[VInt]
       case VVal(a: String, vint: VInt) => vint
-      case VVal(a: String, later: VExecuteLater) => readParam(later.e)
+      case VVal(a: String, later: VExecuteLater) => readParam(later.e) // todo: is it even used?
       case _ => ???
     }
   }
@@ -279,6 +282,7 @@ object Main {
     val v1 = myeval(em.e1)
     v1 match {
       case VPair(a, b) => // Evaluate E3 with bindings if Pair
+        logger.debug(s"parseMatch :: The v1 is Pair - $a, $b")
         // Add new context items
         val modifiedContext = mutable.Map[String, Val]()
         modifiedContext ++= vargs
@@ -286,10 +290,13 @@ object Main {
         modifiedContext += (em.tl -> VVal(em.tl, b))
 
         // Evaluate E3
+        logger.debug(s"Evaluate E3")
         myeval(em.e3)(modifiedContext.toMap)
       case VNil() => // Evaluate E2 if Nil
+        logger.debug("v1 is null, evaluate E2")
         myeval(em.e2)
       case _ =>
+        logger.debug("match-list used v1")
         v1
     }
   }
@@ -299,7 +306,33 @@ object Main {
 //    logger.info(s"\n*** Evaluating $e ***\n")
 
     e match {
+      case ERmk(bs) =>
+        val binds = bs.map(convertBind)
+        VStruct(binds)
+      case ERfd(rec: Expr, fd: String) =>
+        val struct = myeval(rec)
+
+        struct match {
+          case VStruct(binds) =>
+            logger.debug("ERfd reads value of ERmk - OK.")
+            binds.find(bind => bind match {
+              case VVal(a: String, v) => a == fd
+              case VDef(name: String, args, expr) => name == fd
+              case _ => false
+            }) match {
+              case Some(x: Val) => x match {
+                case VVal(name: String, VExecuteLater(e: Expr)) => myeval(e)
+                case _ => x
+              }
+              case _ => VNil()
+            }
+          case _ =>
+            logger.error(s"Unable to read value [$fd] as not ERmk found...")
+            throw new EvalException("VStruct (ERmk) expected...")
+        }
+
       case m: EMatch =>
+        logger.info(s"MYEVAL :: Parsing match-list - $e")
         parseMatch(m)
       case EFst(el) => // parse pair
         logger.info(s"MYEVAL :: Get first - $e")
